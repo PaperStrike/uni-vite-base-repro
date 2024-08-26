@@ -1,6 +1,7 @@
 <template>
   <view class="content">
     <image class="logo" src="/static/logo.png"></image>
+    <image class="logo test" src="@/assets/test.jpg"></image>
     <view class="text-area">
       <text class="title">{{ title }}</text>
     </view>
@@ -25,7 +26,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: url(../../assets/logo.png);
+  background: url(../../assets/test.jpg);
 }
 
 .logo {
