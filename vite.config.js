@@ -1,20 +1,64 @@
-import { defineConfig } from 'vite'
-import uni from '@dcloudio/vite-plugin-uni'
+import { join } from 'path';
+import uni from '@dcloudio/vite-plugin-uni';
+import postcssUrl from 'postcss-url';
 
-const base = 'https://example.com/example/path';
-
-// https://vitejs.dev/config/
-export default defineConfig({
+const uniBase = ({
   base,
-  plugins: [
-    uni(),
+}) => {
+  let resolver;
+  return [
     {
-      name: 'override-base-dir',
+      name: 'uni-force-base',
+      enforce: 'pre',
       config() {
         return {
-          base,
+          css: {
+            postcss: {
+              plugins: [
+                postcssUrl({
+                  async url({ url }, { file }) {
+                    if (!url.startsWith('@/') && !url.startsWith('.')) return url;
+
+                    let resolved = true;
+                    try {
+                      const resolvedPath = await resolver(url, join(file, 'index'));
+                      resolved = !!resolvedPath;
+                    } catch {
+                      resolved = false;
+                    }
+                    if (!resolved) {
+                      throw new Error(`Could not resolve "${url}"`);
+                    }
+
+                    const relPath = url.replace(/^(@|[\./]+)(static)?\//, '');
+                    return `${base}${relPath}`;
+                  },
+                }),
+              ],
+            },
+          },
         };
       },
+      configResolved(config) {
+        resolver = config.createResolver();
+      },
+      generateBundle(_opts, bundle) {
+        const assetsJs = bundle['common/assets.js'];
+        if (!assetsJs || !('code' in assetsJs)) return;
+        assetsJs.code = assetsJs.code.replace(/(?<=_imports_\d+=").+?(?=")/g, (str) => (
+          str.replace(/^\/(static\/)?/, base)
+        ));
+      },
     },
+  ];
+};
+
+// https://vitejs.dev/config/
+export default {
+  plugins: [
+    uniBase({
+      base: 'https://example.com/example/path/',
+    }),
+    uni(),
   ],
-})
+};
